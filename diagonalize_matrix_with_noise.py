@@ -73,7 +73,7 @@ try:
 
 except FileNotFoundError:
 	print(f"A file named {args.f} does not exist.")
-	sys.exit(0)
+	sys.exit(1)
 
 
 num_dipoles = len(coordinates)
