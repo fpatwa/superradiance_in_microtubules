@@ -1,0 +1,31 @@
+image: python:latest
+
+variables:
+    FILENAME:
+        value: "Positions_Dipoles_Tables/perfect_rings_PD_table_pos_dip_10_spirals.txt"
+        description: "This is the filename to read from."
+
+stages:
+    - diagonalize-matrices
+
+default:
+    tags:
+        - docker-dell
+
+before_script:
+    - pip install numpy matplotlib
+    - export PYTHONUNBUFFERED=true
+
+diagonalize-matrices:
+    stage: diagonalize-matrices
+    parallel:
+        matrix:
+            - NOISE: [5,10,20,50,100]
+    script:
+        - echo "This will diagonalize a matrix with a given noise."
+        - echo "Noise = $NOISE"
+        - python diagonalize_matrix_with_noise.py -f $FILENAME -W $NOISE
+    artifacts:
+        paths:
+            - "*.npy"
+            
