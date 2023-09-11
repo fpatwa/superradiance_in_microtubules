@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import time
 import sys
+import argparse
 
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -32,7 +33,7 @@ musq = 181224                # A^3 cm^-1
 gamma = 2.73e-3              # cm^-1        (energy)
 w0 = c*k0*(1e8)              # s^-1         (angular frequency)
 ns = 104
-W = 5                      # cm^-1        (energy)
+W = 10                      # cm^-1        (energy)
 #num_dipoles = ns*int(sys.argv[1])
 
 # I tried to convert everything to SI units just as a sanity check (I should get the same results) but I didn't get the same results (I'm probably doing something wrong here).
@@ -56,21 +57,24 @@ def index_of_SRS(eigenvalues):
     Gamma_eigenvalues = np.imag(eigenvalues) / (-gamma/2)
     return np.where(np.sort(Energ_eigenvalues) == Energ_eigenvalues[np.where(Gamma_eigenvalues == np.max(Gamma_eigenvalues))[0][0]])[0][0]
 		
-	
-if len(sys.argv) == 1:
-	print("Please enter the name of the file with dipole positions and orientations as a command-line argument.")
-	sys.exit(0)
 
 prg_start = time.time()
 
+parser = argparse.ArgumentParser()
+parser.add_argument("-W", type=int, required=True)
+parser.add_argument("-f", required=True)
+args = parser.parse_args()
+W = args.W
+
 # Extracting positions and dipole orientations from table
 try:
-	with open(sys.argv[1]) as f:
+	with open(args.f) as f:
 		coordinates = f.readlines()
 
 except FileNotFoundError:
-	print(f"A file named {sys.argv[1]} does not exist.")
+	print(f"A file named {args.f} does not exist.")
 	sys.exit(0)
+
 
 num_dipoles = len(coordinates)
 positions = np.array([[float(num) for num in line.split()[:3]] for line in coordinates])
@@ -121,12 +125,11 @@ def G(n,m):
 	
 	#return gamma * mu_hat(n)@mu_hat(m)
 
+
 # Populate the non-Hermitian Hamiltonian Heff using the above
 Heff = np.zeros((num_dipoles, num_dipoles), dtype=np.complex64)
 
-# Store diagonal energies to maybe use again
-noiseW = np.zeros(num_dipoles, dtype=np.complex64)
-
+print("Populating matrix...")
 # Utilize the fact that Heff is symmetric (we don't need to evaluate the same matrix element twice)
 for n in range(num_dipoles):
 	for m in range(n+1):
@@ -136,46 +139,25 @@ for n in range(num_dipoles):
 		if m != n:
 			Heff[m][n] = matrix_element
 	
-	noiseW[n] = site_e
-
-
+print("Done populating. Now diagonalizing...")
 # Diagonalize matrix
 diag_start = time.time()
 #eigenvalues, eigenvectors = eig(Heff)
 eigenvalues = eigvals(Heff)
 diag_end = time.time()
-
+print("Done diagonalizing.\n")
 Gamma_values = np.imag(eigenvalues) / (-gamma/2)
 energy_values = np.real(eigenvalues)
 
 prg_end = time.time()
 
-#SRS = eigenvectors[:,index_of_SRS(eigenvalues)]
-
-#things_to_plot = np.concatenate((positions, np.abs(SRS[:,np.newaxis])**2), axis=1)
-
-#fig = plt.figure()
-#ax = fig.add_subplot(111, projection='3d')
-
-#scatterplot = ax.scatter(things_to_plot[:,0], things_to_plot[:,1], things_to_plot[:,2], c=things_to_plot[:,3], cmap='jet', vmin=1e-6, vmax=1e-2, s=200, alpha=1)
-
-#colorbar_ax = fig.add_subplot(122)
-#plt.colorbar(scatterplot, ax=ax)
-
-#plt.show()
 print(f"Program runtime: {round(prg_end - prg_start, 3)}.")
 print(f"Diagonalization time for {int(num_dipoles/104)} spirals: {round(diag_end - diag_start, 3)}.")
 
-#print(index_of_SRS(eigenvalues))
-#print()
-plt.xlim(-150, 150)
-plt.ylim(-0.5, 20)
+spiral_num = (args.f).split("_")[6]
 
-plt.xlabel("Energy")
-plt.ylabel("Γ / γ")
-	
-plt.scatter(energy_values, Gamma_values)
-plt.show()
-	
+np.save(f"perf_ring_eigenvalues_{spiral_num}_spirals_noise_{W}", eigenvalues)
 
+if W == 0:
+	np.save(f"perf_ring_Hamiltonian_{spiral_num}_spirals_noise_{W}", Heff)
 
