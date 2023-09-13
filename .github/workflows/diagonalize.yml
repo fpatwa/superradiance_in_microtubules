@@ -9,6 +9,9 @@ on:
     # schedule for 3:00am CST which is 9:00am UTC
     - cron:  '0 9 * * *'
 
+env:
+  FILENAME: "Positions_Dipoles_Tables/perfect_rings_PD_table_pos_dip_10_spirals.txt"
+
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   Diagonalize-matrices:
@@ -31,7 +34,7 @@ jobs:
         run: |
           echo "This will diagonalize a matrix with a given noise."
           echo "Noise = $NOISE"
-          python diagonalize_matrix_with_noise.py -f $FILENAME -W $NOISE
+          python diagonalize_matrix_with_noise.py -f $FILENAME -W ${{ matrix.NOISE }}
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v3.1.3
         with:
